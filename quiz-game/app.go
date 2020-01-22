@@ -5,13 +5,18 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
+	"strings"
 	"time"
 )
 
-func quiz(problems [][]string, timeout int) int {
+func quiz(problems [][]string, timeout int, shuffle bool) int {
 	total := 0
 	timer := time.NewTimer(time.Second * time.Duration(timeout))
+
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(problems), func(i, j int) { problems[i], problems[j] = problems[j], problems[i] })
 
 	for i, j := range problems {
 		q, a := j[0], j[1]
@@ -20,7 +25,7 @@ func quiz(problems [][]string, timeout int) int {
 		go func() {
 			var userAnswer string
 			fmt.Scanln(&userAnswer)
-			answerChannel <- userAnswer
+			answerChannel <- strings.Trim(userAnswer, " ")
 		}()
 		select {
 		case userAnswer := <-answerChannel:
@@ -39,8 +44,10 @@ func quiz(problems [][]string, timeout int) int {
 func main() {
 	var timeout int
 	var problemsFile string
+	var shuffle bool
 	flag.StringVar(&problemsFile, "path", "problems/problems.csv", "Problems CSV file")
 	flag.IntVar(&timeout, "timeout", 10, "Max time for the quiz")
+	flag.BoolVar(&shuffle, "shuffle", true, "Question shffling")
 	flag.Parse()
 
 	csvfile, err := os.Open(problemsFile)
@@ -54,7 +61,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	total := quiz(problems, timeout)
+	total := quiz(problems, timeout, shuffle)
 
 	fmt.Printf("You scored %d out of %d!\n", total, len(problems))
 }
